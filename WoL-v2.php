@@ -38,7 +38,8 @@ function sendMagic($mac, $ip="255.255.255.255", $port=9) {
  return 0; // everything seems OK
 }
 
-function Ping($aIP) {
+
+/*function Ping($aIP) {
  // ping each IP in array and return results in assoc. array (key is IP)
  // array[$ip]==0 if IP is alive, error desc. otherwise
  $ctimeout=0.1;      // connect timeout in (float)secs (probably useless for UDP)
@@ -48,7 +49,8 @@ function Ping($aIP) {
  $data=chr(13);
  $prot="udp";
  $port=getservbyname($this->ping_port, $prot);
- foreach ($aIP as $ip) { // pre kazdu IP
+ foreach ($aIP as $ip) { // Para cada IP
+  echo $ip."<br>";
    $errno=$errstr="";
    $sock=@fsockopen("$prot://$ip", $port, $errno, $errstr, $ctimeout);
    if (!$sock) $ret[$ip]="connect error #$errno: $errstr";
@@ -61,6 +63,7 @@ function Ping($aIP) {
    for($i=$usleept; $i<$utimeout; $i+=$usleept) { // every $usleept until $utimeout
      usleep($usleept); // wait for data
      $retdata=@fgets($sock, 1);
+
      if ($retdata == false) {
        // probably because of port unreachable ==> IP should be alive
        //$ret[$ip]="error in fgets(), time $i";
@@ -70,10 +73,22 @@ function Ping($aIP) {
      if ($retdata) { $ret[$ip]=0; break; } // received something
    }
    if ($retdata === "") $ret[$ip]="no data received";
-   fclose($sock);
+       fclose($sock);
  }
  return $ret;
-}
+}*/
+
+function Ping($aIP) {
+ foreach ($aIP as $ip) { 
+    $ret[$ip]=0;
+    $ping_result = shell_exec('ping -c 1 '.$ip); //el -c 1 indica que pingueo una vez
+    if( !preg_match('/ 1 received/',$ping_result) ){
+       $ret[$ip]=1;
+        // goto next1;
+     }
+   }
+       return $ret;
+} 
 
 function getFromARP() {
  // try to get IP to MAC mapping from ARP cache
@@ -85,8 +100,8 @@ function getFromARP() {
   case   0: break;
   default : return "Unknown error while running $this_arp (return code $ret_val)!";
  }
- $regex="($this->regex_ip) .* ($this->regex_mac) ";
- foreach($a_resp as $line) if (eregi($regex, $line, $regs))
+ $regex="/($this->regex_ip) .* ($this->regex_mac) /";
+ foreach($a_resp as $line) if (preg_match($regex, $line, $regs))
    $ret[$regs[1]]=$regs[2];
  return $ret;
 }
