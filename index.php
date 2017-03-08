@@ -1,145 +1,217 @@
-<?php
-require("include.php");
-require("WoL-v2.php");
-wolHeader();
-$conn=DBConnect();
-$WoL=new WakeOnLan();
-echo "<h1>Stav sledovan˝ch poËÌtaËov</h1>\n";
+<!DOCtype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="shortcut icon" href="favicon.PNG">
 
-// sorting
-if (isset($_GET['sort'])) $sorted=$_GET['sort'];
-                     else $sorted="name";
-if (!preg_match('/^(name|ip)$/', $sorted)) $sorted="name";
+    <title>Prender maquinas</title>
 
-/*** GET IPs from DB ***/
-$res=mysql_query("SELECT * FROM WakeOnLan ORDER BY '$sorted'");
-if (!$res) die("Error getting data from database!");
-$IPdata=array();
-while ($row=mysql_fetch_assoc($res)) {
-  //print_r($row);
-  $IPdata[$row['ip']]['name']=$row['name'];
-  $IPdata[$row['ip']]['mac' ]=$row['mac'];
-}
-// prepare array for ping
-foreach($IPdata as $key => $val) $IPs[]=$key;
-//print_r($IPs);
+    <!-- Bootstrap core CSS -->
+    <link href="../bootstrap/dist/css/bootstrap.css" rel="stylesheet">
 
-/*** GET IPs from user-supplied range ***/
-if (isset($_GET['manualip'])) $manual=$_GET['manualip'];
-                         else $manual=false;
-if ($manual) {
-  $ip_pref =$_GET['ip1'].".";
-  $ip_pref.=$_GET['ip2'].".";
-  $ip_pref.=$_GET['ip3'];
-  $ip_from =$_GET['ip4'];
-  $ip_to   =$_GET['ip5'];
-  if (!$ip_to) $ip_to=$ip_from; // only 1 IP address (not range)
-  if (!eregi("^".$WoL->regex_ip."$", "$ip_pref.$ip_from")) myerror("Zadali ste nespr·vnu prv˙ IP addresu!");
-  if (!eregi("^".$WoL->regex_ip."$", "$ip_pref.$ip_to"  )) myerror("Zadali ste nespr·vnu poslend˙ IP addresu!");
-  if ($ip_from > $ip_to) myerror("Prv· IP adresa je v‰Ëöia ako posledn·!");
-  for($i=$ip_from; $i <= $ip_to; $i++) $manualIPs[]="$ip_pref.$i";
-}
+    <!-- Custom styles for this template -->
+    <!-- <link href="jumbotron-narrow.css" rel="stylesheet"> -->
 
-/*** PING IPs ***/
-if ($manual) $ping=$WoL->ping($manualIPs);
-        else $ping=$WoL->ping($IPs);
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="../../assets/js/html5shiv.js"></script>
+      <script src="../../assets/js/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  
+  <?php
+  require("include.php");
+  require("WoL-v2.php");
+  $conn=DBConnect();
+  $WoL=new WakeOnLan();
 
-/*** in NORMAL mode, display PING results with links to WakeUp ***/
-if (!$manual) {
-  $cnt_all=count ($IPs);
-  $cnt_err=countx($ping);
-  echo "<TABLE class='Tsmall' cellpadding=2 align=\"center\">";
-  echo "\n <TR><td class='Tsmall'>&nbsp;Vöetky  PC&nbsp;<td class='Tsmall' align='right'>&nbsp;<b>$cnt_all</b>&nbsp;";
-  echo "\n <TR><td class='Tsmall'>&nbsp;ZapnutÈ PC&nbsp;<td class='Tsmall' align='right'>&nbsp;<b style=\"color: green;\">".($cnt_all-$cnt_err)."</b>&nbsp;";
-  echo "\n <TR><td class='Tsmall'>&nbsp;VypnutÈ PC&nbsp;<td class='Tsmall' align='right'>&nbsp;<b style=\"color: red;\"  ><b style=\"color: red;\">$cnt_err</b>&nbsp;";
-  echo "\n</TABLE>\n";
-
-  back('Obnoviù');
-  echo "<p class='help'>";
-  echo "Pre zmenu triedenia kliknite na prÌsluön˝ stÂpec tabuæky<br>";
-  echo "";
-  echo "</p>\n";
-
-  echo "<FORM ACTION=\"wakeup.php\" METHOD=\"post\">";
-  echo "\n<TABLE cellpadding=1 align=\"center\">";
-  echo "\n <TR>";
-  echo "<th>";
-  if ($sorted=="name") echo $arrowDown;
-  echo "&nbsp;<a class='sort' href='./?sort=name'>Meno poËÌtaËa</a>&nbsp;";
-  echo "<th>";
-  if ($sorted=="ip") echo $arrowDown;
-  echo "&nbsp;<a class='sort' href='./?sort=ip'>IP adresa</a>&nbsp;";
-  echo "<th>&nbsp;Stav&nbsp;";
-  echo "<th>&nbsp;Zapn˙ù?&nbsp;";
-  foreach($IPs as $ip) { // pre kazdu IP riadok tabulky
-   if ($ping[$ip]) { $pic="off"; $w="checked"; $col="red"; }
-              else { $pic="on";  $w="";  $col="limegreen"; }
-   echo "\n <TR>";
-   echo "<td>&nbsp;".$IPdata[$ip]['name']."&nbsp;";
-   echo "<td>&nbsp;".$ip."&nbsp;";
-   echo "<td><img src='$pic.gif' alt='Stav' border=0>";
-   if (!$ping[$ip]) echo "OK";
-   else if ($ping[$ip]=="no data received")
-        echo "vypnut˝";
-   else echo $ping[$ip];
-   echo "&nbsp;";
-   $ip2="ip_".str_replace('.', '_', $ip);
-   echo "<td align=\"center\"><input type='checkbox' name='$ip2' $w>";
+  /*** get IPs from DB ***/
+  $res=$conn->query("SELECT * FROM WakeOnLan");
+  if (!$res) 
+    die("Error obteniendo datos de la base!");
+  $IPdata=array();
+  while ($row=$res->fetch(PDO::FETCH_ASSOC)) {
+    //print_r($row);
+    $IPdata[$row['ip']]['name']=$row['name'];
+    $IPdata[$row['ip']]['mac' ]=$row['mac'];
   }
-  echo "\n</TABLE>\n";
-  echo "<br><center><INPUT TYPE='submit' name='btn3' value='Zapn˙ù'></center>\n";
-  echo "</FORM>\n";
-/*** if MANUAL, get MACs and display add form ***/
-} else {
-  $arp=$WoL->getFromARP();
-  if (!is_array($arp)) myerror($q);
-  back();
-  echo "<p class='help'>";
-  echo "»ervenÈ pozadie znamen·, ûe dan˝ poËÌtaË je vypnut˝ a nie je moûnÈ zistiù jeho MAC adresu.<br>&nbsp;<br>";
-  echo "äedÈ pozadie znamen·, ûe poËÌtaË sa uû nach·dza v datab·ze.<br>&nbsp;<br>";
-  echo "ZelenÈ pozadie znamen·, ûe poËÌtaË je zapnut˝ a eöte sa nenach·dza v datab·ze.<br>Ak sa podarilo zistiù jeho MAC adresu, je moûnÈ ho pridaù. Je potrebnÈ vypniù <i>N·zov</i>, pod ktor˝m bude v datab·ze uloûen˝.";
-  echo "</p>\n";
-  echo "<h2 style=\"margin-top: -10px;\">Pridanie poËÌtaËa do datab·zy</h2>\n";
-  echo "<FORM ACTION='add-ip.php' METHOD='post'>\n";
-  echo "\n<TABLE cellpadding=1 class=\"nb\" align=\"center\">";
-  echo "\n <TR><th class=\"nb\">IP adresa<th class=\"nb\">Meno poËÌtaËa<th class=\"nb\">MAC adresa<th class=\"nb\">Stav";
-  foreach($manualIPs as $ip) { // pre kazdu IP riadok tabulky
-   if (isset($arp[$ip])) $txt="'$arp[$ip]' readonly";
-                    else $txt="''";
-   if ($ping[$ip]) { $pic="off"; $col="red"; }
-              else { $pic="on";  $col="limegreen"; }
-   if (isset($IPdata[$ip]) && $IPdata[$ip]['name']) { // IP uz je v DB
-     $name="'".$IPdata[$ip]['name']."' readonly";
-     $txt ="'".$IPdata[$ip]['mac'] ."' readonly";
-     $col ="gray";
-   } else $name="'?'";
-   echo "\n <TR>";
-   echo "<td class=\"nb\"><INPUT TYPE='text' name='add_ip[]'   value='$ip' readonly style=\"background-color: $col;\">";
-   echo "<td class=\"nb\"><INPUT TYPE='text' name='add_name[]' value=$name style=\"background-color: $col;\">";
-   echo "<td class=\"nb\"><INPUT TYPE='text' name='add_mac[]'  value=$txt style=\"background-color: $col;\">";
-   echo "<td class=\"nb\"><img src='$pic.gif' alt='Stav' border=0>";
-   if (!$ping[$ip]) echo "OK";
-   else if ($ping[$ip]=="no data received")
-        echo "vypnut˝";
-   else echo $ping[$ip];
-  } /* foreach() */
-  echo "\n</TABLE>\n";
-  echo "<br><center><INPUT TYPE='submit' name='btn2' value='Pridaj'></center>\n";
-  echo "</FORM>\n";
-}
+  // prepare array for ping
+  foreach($IPdata as $key => $val) $IPs[]=$key;
+  //print_r($IPs);
 
-if (!$manual) { ?>
-<center><FORM ACTION="./" METHOD="GET">
- Manu·lne pridaù IP adresy z rozsahu:<br>
- <INPUT TYPE="text" NAME="ip1" size=3 maxlength=3> .
- <INPUT TYPE="text" NAME="ip2" size=3 maxlength=3> .
- <INPUT TYPE="text" NAME="ip3" size=3 maxlength=3> .
- <INPUT TYPE="text" NAME="ip4" size=3 maxlength=3> --
- <INPUT TYPE="text" NAME="ip5" size=3 maxlength=3>
- <INPUT TYPE="hidden" NAME="manualip" value="true"><br> <br>
- <INPUT TYPE="submit" name="btn1" value="Odoslaù">
-</FORM></center>
-<?php }
+  /*** get IPs from user-supplied range ***/
+  if (isset($_get['manualip'])) $manual=$_get['manualip'];
+                           else $manual=false;
+  if ($manual) {
+    $ip_pref =$_get['ip1'].".";
+    $ip_pref.=$_get['ip2'].".";
+    $ip_pref.=$_get['ip3'];
+    $ip_from =$_get['ip4'];
+    $ip_to   =$_get['ip5'];
+    if (!$ip_to) $ip_to=$ip_from; // only 1 IP address (not range)
+    if (!preg_match("/^".$WoL->regex_ip."$/", "$ip_pref.$ip_from")) myerror("Direcci√≥n IP incorrecta");
+    if (!preg_match("/^".$WoL->regex_ip."$/", "$ip_pref.$ip_to"  )) myerror("direccion incorrecta ultima");
+    if ($ip_from > $ip_to) myerror("La direccion es menor a la ingresada anteriormente");
+    for($i=$ip_from; $i <= $ip_to; $i++) $manualIPs[]="$ip_pref.$i";
+  }
 
-wolFooter();
-?>
+  /*** PING IPs ***/
+  if ($manual) $ping=$WoL->ping($manualIPs);
+          else $ping=$WoL->ping($IPs);
+  ?>
+
+  <body>
+
+    <div class="container">
+
+      <div class="page-header">
+        <h1>Encender m√°quinas<small> U.E.P.</small></h1>
+      </div>
+
+      <div class="panel with-nav-tabs">
+        <div class="panel-heading">
+                <ul class="nav nav-tabs">
+                    <li class="active"><a href="#tab1default" data-toggle="tab">Equipos existentes</a></li>
+                    <li><a href="#tab2default" data-toggle="tab">Agregar nueva</a></li>   
+                </ul>
+        </div>
+        <div class="panel-body">
+            <div class="tab-content">
+            <div class="tab-pane fade in active" id="tab1default">
+              <?php
+                echo "<FORM id='form_encender' action=wakeup.php action=\"post\">";
+                echo "\n<TABLE class=\"table\">";
+                echo "\n <TR>";
+                echo "<th>&nbsp;Equipo&nbsp;";
+                echo "<th>&nbsp;IP&nbsp;";
+                echo "<th>&nbsp;Estado&nbsp;";
+                echo "<th>&nbsp;Encender?&nbsp;";
+                foreach($IPs as $ip) {
+                    if ($ping[$ip]) { $pic="off"; $w="checked"; $col="red"; }
+                            else { $pic="on";  $w="";  $col="limegreen"; } 
+                 echo "\n <TR>";
+                 echo "<td>&nbsp;".$IPdata[$ip]['name']."&nbsp;";                 
+                 echo "<td>&nbsp;".$ip."&nbsp;";
+                 echo "<td>";
+                 if ($ping[$ip]==0) 
+                   echo '<span class="label label-success">Encendido</span>';
+                 else if ($ping[$ip]==1)
+                   echo '<span class="label label-danger">Apagado</span>';
+                 else echo $ping[$ip];
+                 echo "&nbsp;";
+                 $ip2="ip_".str_replace('.', '_', $ip);
+                 echo "<td align=\"center\"><input type='checkbox' name='$ip2' $w>";
+                }
+                echo "\n</TABLE>\n";
+                echo '<button type="submit" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_tab1">';
+                echo '<span class="encender glyphicon glyphicon-off"></span> Encender';
+                echo '</button>';
+                echo "</FORM>\n";
+              ?>
+            </div>
+
+          <!--  <button type="button" class="btn btn-primary btn-lg" data-toggle="modal" data-target="#modal_tab1">
+  Launch demo modal
+</button> -->
+
+            <div class="tab-pane fade" id="tab2default">
+              <FORM class="form-inline" action="search.php" action="post">
+               Ingrese una ip o un rango<br>
+               <div class="form-group">
+               <INPUT type="text" class="form-control col-md-1 text-center" name="ip1" size=3 maxlength=3>
+               </div>
+               <div class="form-group">
+               <INPUT type="text" class="form-control col-md-1 text-center" name="ip2" size=3 maxlength=3>
+               </div>
+               <div class="form-group">
+               <INPUT type="text" class="form-control col-md-1 text-center" name="ip3" size=3 maxlength=3>
+               </div>
+               <div class="form-group">
+               <INPUT type="text" class="form-control col-md-1 text-center" name="ip4" size=3 maxlength=3>
+               </div>
+               <div class="form-group">
+               <INPUT type="text" class="form-control col-md-1 text-center" name="ip5" size=3 maxlength=3>
+               </div>
+
+               <!-- BORRAR <INPUT type="hidden" name="manualip" value="true"><br> <br> -->
+               <!-- <INPUT type="submit" name="btn1" value="Buscar"> -->
+               <button type="submit" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal_tab1">
+                <span class="encender glyphicon glyphicon-search"></span> Buscar
+                </button>
+              </FORM>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+    </div> <!-- /container -->
+
+  </body>
+
+<div id="modal_tab1" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Wol</h4>
+      </div>
+      <div class="modal-body">
+        <!-- se muestra la info que devuelve test.php -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<div id="modal_tab2" class="modal fade" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Wol</h4>
+      </div>
+      <div class="modal-body">
+        <!-- se muestra la info que devuelve test.php -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+
+<script>
+/* must apply only after HTML has loaded */
+$(document).ready(function () {
+    $("#form_encender").on("submit", function(e) {
+        var postData = $(this).serializeArray();
+        var formURL = $(this).attr("action");
+        $.ajax({
+            url: formURL,
+            type: "POST",
+            data: postData,
+            success: function(data, textStatus, jqXHR) {
+                //$('#modal_tab1 .modal-header .modal-title').html("Hola!");
+                $('#modal_tab1 .modal-body').html(data);
+
+            },
+            error: function(jqXHR, status, error) {
+                console.log(status + ": " + error);
+            }
+        });
+        e.preventDefault();
+    });
+});
+</script>
+</html>
