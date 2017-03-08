@@ -68,7 +68,7 @@
     <div class="container">
 
       <div class="page-header">
-        <h1>Encender máquinas<small> U.E.P.</small></h1>
+        <h1>Encender máquinas</h1>
       </div>
 
       <div class="panel with-nav-tabs">

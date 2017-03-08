@@ -15,8 +15,6 @@ function DBConnect() {
   return $conn;
 }
 
-// $arrowDown='&#8595;'; // 0x2191 unicode  -------- BORRAR
-
 function back($mesg="&nbsp;Sp‰ù&nbsp;") {
   echo "<center><FORM ACTION=\"./\" METHOD=\"get\">";
   echo "<INPUT TYPE='hidden' NAME='uniq' VALUE='".time()."'>";
@@ -33,10 +31,8 @@ function countx($array) { // count non-empty elements
 function myerror($txt, $die=true) {
  echo "\n<div class='myerror'><b>ERROR:</b> $txt</div>\n";
  if ($die) {
-  // wolFooter();
    die("<!-- myerror() -->");
  }
 }
-
 
 ?>
